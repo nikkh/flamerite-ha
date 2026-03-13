@@ -1,0 +1,22 @@
+{
+  "domain": "flamerite_glazer",
+  "name": "Flamerite Glazer",
+  "version": "0.1.0",
+  "config_flow": true,
+  "documentation": "https://github.com/nikkh/flamerite-ha",
+  "issue_tracker": "https://github.com/nikkh/flamerite-ha/issues",
+  "dependencies": [],
+  "codeowners": ["@nikkh"],
+  "requirements": ["bleak==0.22.3", "bleak-retry-connector==3.6.0"],
+  "bluetooth": [
+    {
+      "local_name": "Flamerite",
+      "connectable": true
+    },
+    {
+      "local_name": "NITRAFlame",
+      "connectable": true
+    }
+  ],
+  "iot_class": "local_push"
+}

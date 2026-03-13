@@ -1,0 +1,51 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Flamerite Glazer",
+        "description": "Select your Flamerite Glazer fire from the list of discovered devices.",
+        "data": {
+          "address": "Device"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Flamerite Glazer discovered",
+        "description": "Do you want to set up {name} ({address})?"
+      }
+    },
+    "abort": {
+      "already_configured": "This device is already configured.",
+      "no_devices_found": "No Flamerite devices were found. Make sure your fire is powered on and Bluetooth is enabled.",
+      "not_supported": "This device is not supported by the Flamerite Glazer integration."
+    },
+    "error": {
+      "cannot_connect": "Failed to connect to the device. Make sure it is powered on and in range."
+    }
+  },
+  "entity": {
+    "switch": {
+      "power": {
+        "name": "Power"
+      }
+    },
+    "climate": {
+      "heater": {
+        "name": "Heater",
+        "state_attributes": {
+          "fan_mode": {
+            "state": {
+              "off": "Off",
+              "low": "Low (1kW)",
+              "high": "High (1.5kW)"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "flame_brightness": {
+        "name": "Flame Brightness"
+      }
+    }
+  }
+}
