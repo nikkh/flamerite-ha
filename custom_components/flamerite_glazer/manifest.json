@@ -7,7 +7,8 @@
   "issue_tracker": "https://github.com/nikkh/flamerite-ha/issues",
   "dependencies": [],
   "codeowners": ["@nikkh"],
-  "requirements": ["bleak==0.22.3", "bleak-retry-connector==3.6.0"],
+  "requirements": [],
+  "icon": "mdi:fireplace",
   "bluetooth": [
     {
       "local_name": "Flamerite",

@@ -22,6 +22,7 @@ from .const import (
     DEVICE_RESPONSE_TIMEOUT_SECONDS,
     THERMOSTAT_MAX,
     THERMOSTAT_MIN,
+    DEFAULT_NAME,
     Command,
     HeatMode,
 )
@@ -43,22 +44,19 @@ class State:
         """
         Parse a state notification packet.
 
-        Packet structure:
-          [0]     0x20 (fixed header)
-          [1]     payload length (must be 7)
-          [2]     device state:
-                    0x0A = off
-                    0x0B = on, no heat
-                    0x0C = on, low heat
-                    0x0D = on, high heat
-          [3]     unknown
-          [4]     thermostat offset (0-15, add 16 for degrees C)
-          [5]     flame brightness (0-9, add 1 for display value)
-          [6..8]  unused on Glazer model
+        Glazer packet structure (4 bytes total):
+        [0] 0x20  fixed header
+        [1] 0x02  payload length (2 bytes)
+        [2] state byte:
+                0x0A = off
+                0x0B = on, no heat
+                0x0C = on, low heat
+                0x0D = on, high heat
+        [3] 0xA1  command echo (ignored)
         """
         _LOGGER.debug("Flamerite: state packet raw=%s", data.hex())
 
-        if len(data) < 2 or data[0] != 0x20:
+        if len(data) < 4 or data[0] != 0x20 or data[1] != 0x02:
             _LOGGER.debug(
                 "Flamerite: rejected packet header=0x%02x len=%d",
                 data[0] if data else 0xFF,
@@ -66,16 +64,7 @@ class State:
             )
             return False
 
-        payload = data[2:]
-
-        if len(payload) != 7:
-            _LOGGER.debug(
-                "Flamerite: rejected packet payload len=%d (expected 7)",
-                len(payload),
-            )
-            return False
-
-        state_byte = int(payload[0])
+        state_byte = int(data[2])
 
         self.is_powered_on = state_byte > 0x0A
 
@@ -83,26 +72,13 @@ class State:
             HeatMode(state_byte) if self.is_powered_on else HeatMode.OFF
         )
 
-        self.thermostat = max(
-            THERMOSTAT_MIN,
-            min(THERMOSTAT_MAX, int(payload[2]) + 16),
-        )
-
-        self.flame_brightness = max(
-            BRIGHTNESS_MIN,
-            min(BRIGHTNESS_MAX, int(payload[3]) + 1),
-        )
-
         _LOGGER.debug(
-            "Flamerite: state parsed powered=%s heat=%s brightness=%d thermostat=%d",
+            "Flamerite: state parsed powered=%s heat=%s",
             self.is_powered_on,
             self.heat_mode,
-            self.flame_brightness,
-            self.thermostat,
         )
 
         return True
-
 
 class Device:
     """Wrapper for a Flamerite Glazer BLE device."""
@@ -253,7 +229,18 @@ class Device:
         await self._connection.start_notify(
             CMD_RESPONSE_UUID, self._on_notify
         )
-
+        def _on_notify(self, char: BleakGATTCharacteristic, data: bytearray) -> None:
+            """Handle incoming BLE notification - log everything."""
+            _LOGGER.warning(
+                "Flamerite[%s]: NOTIFY char=%s data=%s",
+                self._mac,
+                char.uuid,
+                data.hex(),
+            )
+            if self._state.update_from_bytes(data):
+                self._state_updated.set()
+                if self._state_change_callback:
+                    self._state_change_callback()
     def _on_notify(
         self, char: BleakGATTCharacteristic, data: bytearray
     ) -> None:
@@ -267,11 +254,8 @@ class Device:
 
         if self._state.update_from_bytes(data):
             self._state_updated.set()
-
-            # Push update to coordinator immediately
             if self._state_change_callback:
                 self._state_change_callback()
-
     # ------------------------------------------------------------------
     # Commands
     # ------------------------------------------------------------------

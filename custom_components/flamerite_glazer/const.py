@@ -1,61 +1,50 @@
-"""The Flamerite Glazer integration."""
-from __future__ import annotations
+"""Constants for the Flamerite Glazer integration."""
+from enum import IntEnum
 
-import logging
+DOMAIN = "flamerite_glazer"
+DEFAULT_NAME = "Flamerite Glazer"
 
-from homeassistant.components import bluetooth
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+SUPPORTED_DEVICE_NAMES = ["Flamerite", "Flamerite ","NITRAFlame"]
+DEVICE_SERVICE_UUID = "0000fff0-0000-1000-8000-00805f9b34fb"
 
-from .const import DOMAIN, UPDATE_INTERVAL_SECONDS
-from .coordinator import FlameriteCoordinator
-from .device import Device
+CMD_RESPONSE_UUID = "0000fff1-0000-1000-8000-00805f9b34fb"
+CMD_REQUEST_UUID  = "0000fff2-0000-1000-8000-00805f9b34fb"
 
-_LOGGER = logging.getLogger(__name__)
+CHAR_MODEL_NUMBER  = "00002a24-0000-1000-8000-00805f9b34fb"
+CHAR_SERIAL_NUMBER = "00002a25-0000-1000-8000-00805f9b34fb"
+CHAR_FW_REVISION   = "00002a26-0000-1000-8000-00805f9b34fb"
+CHAR_HW_REVISION   = "00002a27-0000-1000-8000-00805f9b34fb"
+CHAR_MANUFACTURER  = "00002a29-0000-1000-8000-00805f9b34fb"
 
-PLATFORMS = [
-    Platform.SWITCH,
-    Platform.CLIMATE,
-    Platform.NUMBER,
-]
+UPDATE_INTERVAL_SECONDS = 30
+DEVICE_RESPONSE_TIMEOUT_SECONDS = 5
 
+BRIGHTNESS_MIN = 1
+BRIGHTNESS_MAX = 10
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Set up Flamerite Glazer from a config entry."""
-
-    address = entry.unique_id
-
-    ble_device = bluetooth.async_ble_device_from_address(
-        hass, address, connectable=True
-    )
-
-    if not ble_device:
-        raise ConfigEntryNotReady(
-            f"Could not find Flamerite device with address {address}"
-        )
-
-    device = Device(ble_device)
-
-    coordinator = FlameriteCoordinator(hass, entry, device)
-
-    await coordinator.async_config_entry_first_refresh()
-
-    entry.runtime_data = coordinator
-
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    return True
+THERMOSTAT_MIN = 16
+THERMOSTAT_MAX = 31
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Unload a config entry."""
+class HeatMode(IntEnum):
+    """Heat modes as reported in state response byte."""
+    OFF  = 0x0B
+    LOW  = 0x0C
+    HIGH = 0x0D
 
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    if unload_ok:
-        coordinator: FlameriteCoordinator = entry.runtime_data
-        await coordinator.device.disconnect()
+class Command:
+    """BLE commands for the Flamerite Glazer (ERX40 module)."""
+    QUERY_STATE          = bytes([0xA1, 0x01, 0x0A])
+    POWER_ON             = bytes([0xA1, 0x01, 0xFF])
+    POWER_OFF            = bytes([0xA1, 0x01, 0x00])
+    HEAT_LOW             = bytes([0xA1, 0x01, 0x01])
+    HEAT_HIGH            = bytes([0xA1, 0x01, 0x03])
+    FLAME_BRIGHTNESS_INC = bytes([0xA1, 0x01, 0x04])
+    FLAME_BRIGHTNESS_DEC = bytes([0xA1, 0x01, 0x05])
 
-    return unload_ok
+    @staticmethod
+    def set_thermostat(temp_celsius: int) -> bytes:
+        """Build a thermostat command for the given temperature."""
+        temp = max(THERMOSTAT_MIN, min(THERMOSTAT_MAX, temp_celsius))
+        return bytes([0xA2, 0x01, temp])

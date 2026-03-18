@@ -8,8 +8,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
-
-from .const import DOMAIN, UPDATE_INTERVAL_SECONDS
+from .const import DOMAIN
 from .coordinator import FlameriteCoordinator
 from .device import Device
 
